@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101215">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Puntos de la peluquería</title>
+<meta name="description" content="Tu tarjeta de puntos: mirá tus puntos, tus premios y canjealos desde el celular.">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Puntos">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650;12..96,700&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --paper:#101215; --card:#1A1D22; --field:#22262C; --ink:#EDEEF0; --ink2:#9AA1AC; --line:rgba(255,255,255,.11);
+  --violet:#3B82F6; --violet-d:#2563EB; --violet-s:rgba(59,130,246,.16);
+  --ok:#34C77B; --ok-s:rgba(52,199,123,.15); --warn:#E8A93B; --warn-s:rgba(232,169,59,.15); --bad:#F0564C; --bad-s:rgba(240,86,76,.15);
+  --f-display:'Bricolage Grotesque','Avenir Next',system-ui,sans-serif;
+  --f-body:'Instrument Sans','Avenir Next',system-ui,-apple-system,sans-serif;
+  --nav-h:64px; --top-bg:rgba(16,18,21,.85);
+}
+:root[data-theme="light"]{
+  --paper:#F5F2F7; --card:#fff; --field:#fff; --ink:#22192B; --ink2:#62566D; --line:rgba(34,25,43,.13);
+  --violet:#5B3CC4; --violet-d:#432A9E; --violet-s:#ECE6FB;
+  --ok:#1E8A5A; --ok-s:#DDF3E8; --warn:#9A6A12; --warn-s:#FBEFD2; --bad:#B8322A; --bad-s:#FADDDA;
+  --top-bg:rgba(245,242,247,.92);
+}
+html,body{height:100%}
+html{color-scheme:dark}
+:root[data-theme="light"]{color-scheme:light}
+body{font-family:var(--f-body);font-size:15px;line-height:1.45;color:var(--ink);background:var(--paper);-webkit-font-smoothing:antialiased;padding-top:env(safe-area-inset-top,0px)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+a{color:var(--violet-d)}
+:focus-visible{outline:3px solid var(--violet);outline-offset:2px;border-radius:6px}
+h1,h2,h3{font-family:var(--f-display);font-weight:650;letter-spacing:-.01em;line-height:1.15}
+.num{font-variant-numeric:tabular-nums}
+.ic{width:22px;height:22px;flex-shrink:0}
+.muted{color:var(--ink2)}
+.small{font-size:13px}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.grow{flex:1;min-width:0}
+.stack{display:flex;flex-direction:column;gap:12px}
+.hide{display:none!important}
+
+/* shell */
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--top-bg);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.brand{font-family:var(--f-display);font-weight:700;font-size:18px;letter-spacing:-.01em}
+.brand small{display:block;font:500 12px var(--f-body);color:var(--ink2);letter-spacing:0}
+.view{padding:16px 16px calc(var(--nav-h) + 28px + env(safe-area-inset-bottom,0px));max-width:760px;margin:0 auto}
+.view h1{font-size:26px;margin:4px 0 14px}
+.view h2{font-size:17px;margin:22px 0 10px}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:var(--nav-h);font-size:11.5px;font-weight:600;color:var(--ink2)}
+.nav button[aria-current=page]{color:var(--violet)}
+.nav button[aria-current=page] .ic{stroke-width:2.3}
+@media(min-width:900px){
+  .nav{top:0;right:auto;width:92px;flex-direction:column;justify-content:flex-start;padding-top:70px;border-top:0;border-right:1px solid var(--line)}
+  .nav button{flex:none}
+  .view,.top .brand{margin-left:auto;margin-right:auto}
+  .top{padding-left:108px}
+  .view{padding-left:108px;padding-right:24px;max-width:900px;margin:0 auto 0 0;padding-bottom:40px}
+  .view.centered{margin:0 auto}
+}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border-radius:12px;font-weight:650;background:var(--violet);color:#fff;border:1.5px solid var(--violet);text-decoration:none}
+.btn:hover{background:var(--violet-d)}
+.btn.ghost{background:transparent;color:var(--violet-d);border-color:var(--line)}
+.btn.ghost:hover{background:var(--violet-s)}
+.btn.danger{background:transparent;color:var(--bad);border-color:var(--line)}
+.btn.sm{min-height:36px;padding:0 12px;font-size:13.5px;border-radius:10px}
+.btn.block{width:100%}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.iconbtn{width:40px;height:40px;display:grid;place-items:center;border-radius:10px;color:var(--ink2)}
+.iconbtn:hover{background:var(--violet-s);color:var(--violet-d)}
+.theme-fab{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));right:14px;background:var(--card);border:1.5px solid var(--line)}
+label.f{display:block;font-size:13px;font-weight:600;color:var(--ink2)}
+label.f>span{display:block;margin-bottom:5px}
+input[type=text],input[type=tel],input[type=number],input[type=date],input[type=password],input[type=search],select,textarea{width:100%;min-height:46px;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;background:var(--field);color:var(--ink)}
+input:focus,select:focus,textarea:focus{border-color:var(--violet);outline:none;box-shadow:0 0 0 3px var(--violet-s)}
+input[type=color]{width:46px;height:46px;padding:3px;border:1.5px solid var(--line);border-radius:12px;background:var(--field)}
+.hint{font-size:12.5px;color:var(--ink2);margin-top:5px;font-weight:400}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--field);font-weight:600;font-size:14px}
+.chip[aria-pressed=true]{background:var(--violet);border-color:var(--violet);color:#fff}
+.chip.qty{min-height:40px}
+details.more{border:1.5px solid var(--line);border-radius:12px;padding:10px 12px}
+details.more>summary{cursor:pointer;font-weight:650;font-size:13.5px;color:var(--violet-d);list-style:none;display:flex;align-items:center;gap:6px}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:'+';font-size:16px;line-height:1;transition:transform .15s}
+details.more[open]>summary::before{content:'−'}
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:650;padding:3px 9px;border-radius:999px;background:var(--violet-s);color:var(--violet-d)}
+.tag.ok{background:var(--ok-s);color:var(--ok)}.tag.warn{background:var(--warn-s);color:var(--warn)}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;flex-shrink:0}
+
+/* cards / lists */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(min-width:620px){.tiles{grid-template-columns:repeat(4,1fr)}}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.tile b{display:block;font:650 26px var(--f-display);font-variant-numeric:tabular-nums}
+.tile span{font-size:12.5px;color:var(--ink2)}
+button.tile{width:100%;text-align:left;transition:border-color .15s,background .15s}
+button.tile:hover{border-color:var(--violet);background:var(--violet-s)}
+.tile.hero{grid-column:1/-1;background:var(--violet);border-color:var(--violet)}
+.tile.hero b{font-size:34px;color:#fff}
+.tile.hero span{color:rgba(255,255,255,.8)}
+@media(min-width:620px){.tile.hero{grid-column:auto}}
+.list{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.item{display:flex;align-items:center;gap:12px;padding:12px 14px;width:100%;text-align:left;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+button.item:hover{background:#faf8fc}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font:650 15px var(--f-display);color:#fff;flex-shrink:0}
+.pts{font:650 17px var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos{color:var(--ok)}.neg{color:var(--bad)}
+.empty{padding:28px 18px;text-align:center;color:var(--ink2)}
+.empty b{display:block;color:var(--ink);font-family:var(--f-display);font-size:17px;margin-bottom:4px}
+.bars{display:flex;align-items:flex-end;gap:8px;height:96px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;font-size:11.5px;color:var(--ink2)}
+.bars i{display:block;width:100%;background:var(--violet);border-radius:6px 6px 2px 2px;min-height:3px}
+.banner{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-radius:14px;background:var(--warn-s);color:#5f4108;font-size:14px;margin-bottom:14px}
+.fab{position:fixed;right:16px;bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom,0px));z-index:25;box-shadow:0 8px 24px rgba(67,42,158,.35)}
+@media(min-width:900px){.fab{bottom:24px}}
+
+/* tarjeta de muestrario */
+.pcard{position:relative;background:var(--ink);color:#F5F2F7;border-radius:26px;padding:20px 20px 0;overflow:hidden}
+.pcard .who{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.pcard .salon{font-size:12.5px;opacity:.7}
+.pcard h2{font-size:24px;margin:2px 0 0;color:#fff}
+.pcard .code{font:600 12.5px var(--f-body);letter-spacing:.08em;opacity:.7;margin-top:4px}
+.pcard .qr{background:#fff;border-radius:12px;padding:7px;width:92px;height:92px;display:grid;place-items:center;flex-shrink:0}
+.pcard .qr canvas,.pcard .qr img{width:78px!important;height:78px!important}
+.pcard .qr span{color:var(--ink);font:700 11px var(--f-body);text-align:center}
+.pcard .big{margin:18px 0 4px;display:flex;align-items:baseline;gap:8px}
+.pcard .big b{font:700 64px/1 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.pcard .big span{font-size:16px;opacity:.75}
+.pcard .next{font-size:13.5px;opacity:.85;margin-bottom:16px;max-width:34ch}
+.swatches{display:flex;gap:8px;align-items:flex-end;height:104px;margin:0 -4px}
+.sw{--c:#5B3A29;flex:1;position:relative;border-radius:10px 10px 0 0;height:74px;padding:8px 8px;display:flex;flex-direction:column;justify-content:space-between;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1px,transparent 1px 4px),linear-gradient(180deg,color-mix(in srgb,var(--c),white 20%),var(--c) 55%,color-mix(in srgb,var(--c),black 25%));
+  color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);opacity:.78;transition:height .35s cubic-bezier(.3,1.3,.5,1)}
+.sw.light{color:#2a2116;text-shadow:none}
+.sw small{font-size:11px;font-weight:600;line-height:1.1}
+.sw b{font:700 12px var(--f-display)}
+.sw.done{opacity:.92}
+.sw.on{height:104px;opacity:1;box-shadow:0 -2px 0 rgba(255,255,255,.9) inset}
+.stamps{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:8px;margin-top:10px}
+.stamp{aspect-ratio:1;border-radius:50%;border:2px dashed var(--line);display:grid;place-items:center;color:var(--violet-d)}
+.stamp.on{border:2px solid var(--violet);background:var(--violet-s)}
+.stamp.gift{border-style:solid;color:var(--ink2)}
+.stamp .ic{width:20px;height:20px}
+.bar{height:8px;border-radius:99px;background:var(--violet-s);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--violet);border-radius:99px}
+.reward{display:flex;gap:12px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+.reward:last-child{border-bottom:0}
+.reward .cost{font:700 15px var(--f-display);white-space:nowrap}
+
+/* gate */
+.gate{position:relative;min-height:100%;display:flex;flex-direction:column;justify-content:center;max-width:460px;margin:0 auto;padding:28px 20px}
+.gate h1{font-size:38px;line-height:1.05;margin-bottom:10px}
+.gate .lead{color:var(--ink2);margin-bottom:26px}
+.gate .strips{display:flex;gap:6px;height:56px;margin-bottom:26px}
+.gate .strips i{flex:1;border-radius:8px;--c:#000;background:repeating-linear-gradient(90deg,rgba(255,255,255,.16) 0 1px,transparent 1px 4px),linear-gradient(180deg,color-mix(in srgb,var(--c),white 20%),var(--c) 60%,color-mix(in srgb,var(--c),black 25%))}
+.gate .strips i:nth-child(1){height:70%;align-self:flex-end}.gate .strips i:nth-child(2){height:82%;align-self:flex-end}.gate .strips i:nth-child(3){height:94%;align-self:flex-end}.gate .strips i:nth-child(4){height:100%}
+
+/* sheet */
+.scrim{position:fixed;inset:0;z-index:60;background:rgba(34,25,43,.5);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--paper);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px));animation:up .22s ease-out}
+@media(min-width:700px){.scrim{align-items:center}.sheet{border-radius:22px;max-height:86vh}}
+@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.sheet>header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sheet>header h2{font-size:20px;margin:0}
+.toast{position:fixed;left:50%;bottom:calc(var(--nav-h) + 24px);transform:translateX(-50%);z-index:80;background:#24262c;color:#fff;padding:11px 18px;border-radius:12px;font-weight:600;font-size:14px;max-width:88vw;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.video{width:100%;border-radius:14px;background:#000;aspect-ratio:1;object-fit:cover}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* premios con imagen */
+.pgrid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:560px){.pgrid{grid-template-columns:1fr 1fr}}
+.prize{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.prize-img{position:relative;aspect-ratio:16/10;background:var(--violet-s);display:grid;place-items:center;color:var(--violet);overflow:hidden}
+.prize-img.big{border-radius:14px}
+.prize-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.prize-img .ph .ic{width:34px;height:34px;opacity:.55}
+.prize-body{padding:12px 14px 14px;display:flex;flex-direction:column;flex:1}
+.prize-body h3{font-size:17px}
+.prize-body p{margin-top:3px}
+.cost{font:650 16px var(--f-display)}
+.thumb{position:relative;width:56px;height:56px;border-radius:12px;overflow:hidden;background:var(--violet-s);display:grid;place-items:center;color:var(--violet);flex-shrink:0}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.thumb .ic{opacity:.55}
+.imgbox{position:relative;aspect-ratio:16/10;border-radius:16px;overflow:hidden;background:var(--violet-s);display:grid;place-items:center;border:1.5px dashed var(--line)}
+.imgbox img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.imgbox .ph{display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--violet);font-weight:600}
+.imgbox .ph .ic{width:32px;height:32px;opacity:.6}
+.canje-card{background:var(--violet);color:#fff;border-radius:20px;padding:16px 18px}
+.canje-card p{opacity:.9;margin-top:2px}
+.code-big{font:700 22px var(--f-display);letter-spacing:.08em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nav button{position:relative}
+.badge{position:absolute;top:8px;left:calc(50% + 6px);min-width:18px;height:18px;padding:0 5px;border-radius:99px;background:var(--bad);color:#fff;font:700 11px/18px var(--f-body);text-align:center;font-style:normal}
+.badge[hidden]{display:none}
+.prize-img.noimg{aspect-ratio:auto;height:60px}
+.prize-img.big.noimg{height:90px}
+.toast{bottom:auto;top:calc(14px + env(safe-area-inset-top,0px))}
+.pcard .keep{font-size:12px;opacity:.6;margin:-8px 0 14px;max-width:38ch}
+</style></head><body><div id="root"></div><script>
+/* ═══════════════════════════════════════════════════════════
+   Las claves de Supabase viven en config.js (archivo aparte),
+   así al actualizar index.html nunca se pisan.
+   Sin claves → MODO DEMOSTRACIÓN (datos solo en este navegador).
+═══════════════════════════════════════════════════════════ */
+const CONFIG = window.PELU_CONFIG || { SUPABASE_URL: '', SUPABASE_ANON_KEY: '' };
+const MODE = (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) ? 'sb' : 'demo';
+'use strict';
+/* ═══════════════════════════════════════════════════════════
+   Puntos de la peluquería — datos y reglas
+   Todo se guarda en el navegador (localStorage). La capa "DB"
+   está aislada para poder cambiarla por Supabase más adelante.
+═══════════════════════════════════════════════════════════ */
+const LS_KEY = 'pelu-puntos-v2';
+const uid = () => Math.random().toString(36).slice(2, 9);
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => '$' + Math.round(n || 0).toLocaleString('es-AR');
+const fdate = iso => new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+const daysAgo = n => new Date(Date.now() - n * 864e5).toISOString();
+
+const DB = {
+  load() { try { return JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) { return null; } },
+  save(d) { try { localStorage.setItem(LS_KEY, JSON.stringify(d)); } catch (e) { toast('No se pudo guardar en este navegador'); } }
+};
+
+function defaults() {
+  return {
+    v: 1, demo: false,
+    config: { salon: 'Mi peluquería', pin: '1234', pesosPorPunto: 1000, ptsBienvenida: 20, ptsCumple: 50, ptsReferido: 50, sellosMeta: 8, valeSellos: 'Corte o brushing gratis', diasInactivo: 45 },
+    niveles: [
+      { id: 'n1', nombre: 'Castaño', desde: 0,   mult: 1,    color: '#5B3A29' },
+      { id: 'n2', nombre: 'Cobre',   desde: 150, mult: 1.1,  color: '#B4622D' },
+      { id: 'n3', nombre: 'Rubio',   desde: 400, mult: 1.25, color: '#DDB85C' },
+      { id: 'n4', nombre: 'Platino', desde: 900, mult: 1.5,  color: '#CDD3DC' }
+    ],
+    servicios: [
+      { id: 's1', nombre: 'Corte mujer',  precio: 18000 },
+      { id: 's2', nombre: 'Corte hombre', precio: 12000 },
+      { id: 's3', nombre: 'Brushing',     precio: 14000 },
+      { id: 's4', nombre: 'Color raíz',   precio: 40000 },
+      { id: 's5', nombre: 'Mechas',       precio: 85000 },
+      { id: 's6', nombre: 'Tratamiento',  precio: 30000 },
+      { id: 's7', nombre: 'Barba',        precio: 8000 }
+    ],
+    premios: [
+      { id: 'p1', nombre: 'Lavado + brushing', descripcion: 'Lavado con masaje y brushing a elección.', costo: 60, imagen: '', activo: true },
+      { id: 'p2', nombre: 'Tratamiento de hidratación', descripcion: 'Máscara nutritiva para dejar el pelo suave y con brillo.', costo: 120, imagen: '', activo: true },
+      { id: 'p3', nombre: 'Corte gratis', descripcion: 'Un corte de tu elección, sin cargo.', costo: 200, imagen: '', activo: true },
+      { id: 'p4', nombre: '50% en color', descripcion: 'Mitad de precio en el color que quieras.', costo: 350, imagen: '', activo: true }
+    ],
+    clientes: [], movimientos: [], vales: [], canjes: []
+  };
+}
+
+let S = null;   // estado que dibuja la interfaz (panel: todo; cliente: solo lo suyo)
+let D = null;   // solo modo demo: base local completa
+const inDemo = fn => { const k = S; S = D; try { return fn(); } finally { S = k; } };
+const save = () => { if (D && S === D) DB.save(D); };
+
+/* ── consultas ── */
+const getCli = id => S.clientes.find(c => c.id === id);
+const nivelesOrd = () => [...S.niveles].sort((a, b) => a.desde - b.desde);
+function nivelDe(c) { let n = nivelesOrd()[0]; nivelesOrd().forEach(x => { if (c.ptsTotales >= x.desde) n = x; }); return n; }
+function siguienteNivel(c) { return nivelesOrd().find(x => x.desde > c.ptsTotales) || null; }
+const movsDe = id => S.movimientos.filter(m => m.clienteId === id).sort((a, b) => b.fecha.localeCompare(a.fecha));
+const valesDe = id => S.vales.filter(v => v.clienteId === id && v.estado === 'activo');
+const iniciales = n => n.trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+const digits = t => String(t || '').replace(/\D/g, '');
+function waLink(tel, msg) {
+  let d = digits(tel).replace(/^0+/, '');
+  if (!d) return '';
+  if (!d.startsWith('54')) d = '549' + d; else if (!d.startsWith('549')) d = '549' + d.slice(2);
+  return 'https://wa.me/' + d + '?text=' + encodeURIComponent(msg);
+}
+function esCumpleMes(c) { if (!c.nacimiento) return false; return new Date(c.nacimiento + 'T12:00').getMonth() === new Date().getMonth(); }
+function cumpleYaRegalado(c) { const y = new Date().getFullYear(); return S.movimientos.some(m => m.clienteId === c.id && m.tipo === 'cumple' && new Date(m.fecha).getFullYear() === y); }
+function proxCumple(c) { if (!c.nacimiento) return 999; const n = new Date(c.nacimiento + 'T12:00'), h = new Date(); let p = new Date(h.getFullYear(), n.getMonth(), n.getDate()); if (p < new Date(h.getFullYear(), h.getMonth(), h.getDate())) p.setFullYear(h.getFullYear() + 1); return Math.round((p - h) / 864e5); }
+function diasSinVenir(c) { const ref = c.ultimaVisita || c.creado; return Math.floor((Date.now() - new Date(ref)) / 864e5); }
+
+/* ── reglas de puntos ── */
+function puntosPorMonto(monto, c) { return Math.floor(Math.floor(monto / S.config.pesosPorPunto) * nivelDe(c).mult); }
+
+function addMov(c, m) {
+  S.movimientos.push({ id: uid(), clienteId: c.id, fecha: m.fecha || new Date().toISOString(), tipo: m.tipo, puntos: m.puntos || 0, monto: m.monto || 0, detalle: m.detalle || '' });
+  c.puntos += m.puntos || 0;
+  if ((m.puntos || 0) > 0) c.ptsTotales += m.puntos;
+}
+function genCode() {
+  const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code;
+  do { code = 'PL-' + Array.from({ length: 6 }, () => A[Math.random() * A.length | 0]).join(''); } while (S.clientes.some(x => x.codigo === code));
+  return code;
+}
+const codigoCanje = () => 'C-' + Math.random().toString(16).slice(2, 6).toUpperCase();
+function crearCliente(d, fecha) {
+  const c = { id: uid(), codigo: genCode(), nombre: d.nombre.trim(), telefono: d.telefono || '', nacimiento: d.nacimiento || '', referidoPor: d.referidoPor || '', notas: d.notas || '', creado: fecha || new Date().toISOString(), puntos: 0, ptsTotales: 0, visitas: 0, sellos: 0, ultimaVisita: '' };
+  S.clientes.push(c);
+  if (S.config.ptsBienvenida > 0) addMov(c, { tipo: 'bienvenida', puntos: S.config.ptsBienvenida, detalle: 'Puntos de bienvenida', fecha: c.creado });
+  save(); return c;
+}
+function registrarVisita(cid, o) {
+  const c = getCli(cid), cfg = S.config, when = o.fecha || new Date().toISOString(), out = { ganados: 0, notas: [] };
+  const nivelAntes = nivelDe(c);
+  const g = puntosPorMonto(o.monto, c);
+  const nombres = (o.servIds || []).map(id => (S.servicios.find(s => s.id === id) || {}).nombre).filter(Boolean);
+  addMov(c, { tipo: 'visita', puntos: g, monto: o.monto, detalle: nombres.join(' + ') || 'Visita', fecha: when });
+  out.ganados += g;
+  const primera = c.visitas === 0;
+  c.visitas++; c.sellos++; c.ultimaVisita = when;
+  if (c.sellos >= cfg.sellosMeta) { c.sellos = 0; S.vales.push({ id: uid(), clienteId: c.id, nombre: cfg.valeSellos, estado: 'activo', creado: when }); out.notas.push('Completó la tarjeta de visitas: ganó "' + cfg.valeSellos + '"'); }
+  if (o.cumple) { addMov(c, { tipo: 'cumple', puntos: cfg.ptsCumple, detalle: 'Regalo de cumpleaños', fecha: when }); out.ganados += cfg.ptsCumple; }
+  if (o.premioId) { const p = S.premios.find(x => x.id === o.premioId); if (p && c.puntos >= p.costo) { addMov(c, { tipo: 'canje', puntos: -p.costo, detalle: 'Canje: ' + p.nombre, fecha: when }); S.canjes.push({ id: uid(), clienteId: c.id, premioId: p.id, nombre: p.nombre, costo: p.costo, codigo: codigoCanje(), estado: 'entregado', fecha: when }); out.notas.push('Canjeó "' + p.nombre + '" (−' + p.costo + ' pts)'); } }
+  if (o.valeId) { const v = S.vales.find(x => x.id === o.valeId); if (v && v.estado === 'activo') { v.estado = 'usado'; v.usado = when; addMov(c, { tipo: 'vale', puntos: 0, detalle: 'Vale usado: ' + v.nombre, fecha: when }); out.notas.push('Usó el vale "' + v.nombre + '"'); } }
+  if (primera && c.referidoPor) { const r = getCli(c.referidoPor); if (r && cfg.ptsReferido > 0) { addMov(r, { tipo: 'referido', puntos: cfg.ptsReferido, detalle: 'Referido: ' + c.nombre, fecha: when }); out.notas.push(r.nombre + ' ganó ' + cfg.ptsReferido + ' pts por recomendar'); } }
+  const nivelDespues = nivelDe(c);
+  if (nivelDespues.desde > nivelAntes.desde) out.notas.push('Subió al nivel ' + nivelDespues.nombre);
+  save(); return out;
+}
+function ajustarPuntos(cid, pts, motivo) {
+  const c = getCli(cid); if (c.puntos + pts < 0) return false;
+  addMov(c, { tipo: 'ajuste', puntos: pts, detalle: motivo || 'Ajuste manual' }); save(); return true;
+}
+function borrarCliente(id) {
+  S.clientes = S.clientes.filter(c => c.id !== id); S.movimientos = S.movimientos.filter(m => m.clienteId !== id); S.vales = S.vales.filter(v => v.clienteId !== id);
+  S.clientes.forEach(c => { if (c.referidoPor === id) c.referidoPor = ''; }); save();
+}
+
+/* ── datos de ejemplo (para ver la app viva la primera vez) ── */
+function seedDemo() {
+  S.demo = true;
+  const pers = [
+    ['Lucía Fernández', '1990-' + String(new Date().getMonth() + 1).padStart(2, '0') + '-' + String(Math.min(28, new Date().getDate() + 3)).padStart(2, '0'), [70, 45, 20, 5], ['s1', 's3']],
+    ['Martina Gómez', '1988-03-14', [80, 50, 10], ['s4', 's1']],
+    ['Diego Sosa', '1994-11-02', [60, 30, 14, 3], ['s2', 's7']],
+    ['Camila Ruiz', '1997-07-21', [90, 60], ['s5']],
+    ['Paula Herrera', '1985-09-09', [120, 90, 55, 28, 9], ['s6', 's1']],
+    ['Nicolás Vega', '1992-01-30', [12], ['s2']]
+  ];
+  pers.forEach((p, i) => {
+    const c = crearCliente({ nombre: p[0], telefono: '1155500' + String(i + 1).padStart(3, '0'), nacimiento: p[1] }, daysAgo(140));
+    p[2].forEach(ago => { const monto = p[3].reduce((a, id) => a + S.servicios.find(s => s.id === id).precio, 0); registrarVisita(c.id, { servIds: p[3], monto, fecha: daysAgo(ago) }); });
+  });
+  S.demo = true; save();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Capa de datos: la interfaz solo habla con `api`.
+   · demoApi  → localStorage (para probar sin servidor)
+   · sbApi    → Supabase (funciones SQL de supabase.sql)
+═══════════════════════════════════════════════════════════ */
+const newId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : uid() + uid() + uid();
+
+/* ── imágenes: se reducen antes de subir ── */
+function reducirImagen(file, lado, calidad) {
+  return new Promise((ok, fail) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, lado / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+      const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      cv.toBlob(b => b ? ok(b) : fail(new Error('img')), 'image/jpeg', calidad);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); fail(new Error('img')); };
+    img.src = url;
+  });
+}
+const blobADataURL = b => new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(b); });
+
+/* ── modo demostración ── */
+function initDemo() {
+  D = DB.load();
+  if (!D) { D = defaults(); inDemo(seedDemo); }
+}
+const last4 = t => digits(t).slice(-4);
+function payloadDemo(c) {
+  return {
+    cliente: JSON.parse(JSON.stringify(c)),
+    movimientos: movsDe(c.id).slice(0, 30),
+    vales: valesDe(c.id),
+    canjes: S.canjes.filter(k => k.clienteId === c.id && k.estado !== 'cancelado').sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 10),
+    premios: S.premios.filter(p => p.activo).sort((a, b) => a.costo - b.costo),
+    niveles: nivelesOrd(), config: { ...S.config, pin: undefined }
+  };
+}
+const clone = o => JSON.parse(JSON.stringify(o));
+const demoApi = {
+  async init() {},
+  async info() { return { salon: D.config.salon }; },
+  async clienteVer(codigo, tel4) {
+    return inDemo(() => { const c = S.clientes.find(x => x.codigo === String(codigo).trim().toUpperCase()); if (!c || digits(tel4).length !== 4 || last4(c.telefono) !== digits(tel4)) return { error: 'datos' }; return payloadDemo(c); });
+  },
+  async clienteCanjear(codigo, tel4, premioId) {
+    return inDemo(() => {
+      const c = S.clientes.find(x => x.codigo === String(codigo).trim().toUpperCase());
+      if (!c || last4(c.telefono) !== digits(tel4)) return { error: 'datos' };
+      const p = S.premios.find(x => x.id === premioId && x.activo);
+      if (!p) return { error: 'premio' };
+      if (c.puntos < p.costo) return { error: 'puntos' };
+      addMov(c, { tipo: 'canje', puntos: -p.costo, detalle: 'Canje: ' + p.nombre });
+      const k = { id: uid(), clienteId: c.id, premioId: p.id, nombre: p.nombre, costo: p.costo, codigo: codigoCanje(), estado: 'pendiente', fecha: new Date().toISOString() };
+      S.canjes.push(k); save();
+      return { ...payloadDemo(c), canjeNuevo: k };
+    });
+  },
+  async staffLogin(_, pin) { if (pin !== D.config.pin) return false; try { sessionStorage.setItem('pelu-staff', '1'); } catch (e) {} return true; },
+  async staffSession() { try { return sessionStorage.getItem('pelu-staff') === '1'; } catch (e) { return false; } },
+  async staffLogout() { try { sessionStorage.removeItem('pelu-staff'); } catch (e) {} },
+  async estado() { const d = clone(D); return d; },
+  async guardarCliente(d) {
+    return inDemo(() => {
+      if (!d.nombre.trim()) throw new Error('Falta el nombre');
+      if (digits(d.telefono).length < 8) throw new Error('El teléfono debe tener al menos 8 dígitos');
+      if (d.id) { const c = getCli(d.id); Object.assign(c, { nombre: d.nombre.trim(), telefono: d.telefono, nacimiento: d.nacimiento || '', notas: d.notas || '' }); save(); return clone(c); }
+      return clone(crearCliente(d));
+    });
+  },
+  async registrarVisita(cid, o) { return inDemo(() => registrarVisita(cid, o)); },
+  async ajustar(cid, pts, motivo) { return inDemo(() => ajustarPuntos(cid, pts, motivo)); },
+  async canjeResolver(id, accion) {
+    return inDemo(() => {
+      const k = S.canjes.find(x => x.id === id && x.estado === 'pendiente'); if (!k) return false;
+      if (accion === 'entregar') k.estado = 'entregado';
+      else { k.estado = 'cancelado'; const c = getCli(k.clienteId); c.puntos += k.costo; S.movimientos.push({ id: uid(), clienteId: c.id, fecha: new Date().toISOString(), tipo: 'reintegro', puntos: k.costo, monto: 0, detalle: 'Reintegro: ' + k.nombre }); }
+      save(); return true;
+    });
+  },
+  async guardarServicio(d) { inDemo(() => { const o = { nombre: d.nombre, precio: d.precio }; const s = S.servicios.find(x => x.id === d.id); if (s) Object.assign(s, o); else S.servicios.push({ id: d.id || uid(), ...o }); save(); }); },
+  async guardarPremio(d) { inDemo(() => { const o = { nombre: d.nombre, descripcion: d.descripcion, costo: d.costo, imagen: d.imagen, activo: d.activo }; const p = S.premios.find(x => x.id === d.id); if (p) Object.assign(p, o); else S.premios.push({ id: d.id || uid(), ...o }); save(); }); },
+  async guardarNivel(n) { inDemo(() => { Object.assign(S.niveles.find(x => x.id === n.id), n); save(); }); },
+  async guardarConfig(o) { inDemo(() => { Object.assign(S.config, o); save(); }); },
+  async borrar(tabla, id) {
+    inDemo(() => {
+      if (tabla === 'cliente') borrarCliente(id);
+      else if (tabla === 'servicio') S.servicios = S.servicios.filter(x => x.id !== id);
+      else if (tabla === 'premio') S.premios = S.premios.filter(x => x.id !== id);
+      save();
+    });
+  },
+  async vaciarClientes() { inDemo(() => { S.clientes = []; S.movimientos = []; S.vales = []; S.canjes = []; S.demo = false; save(); }); },
+  async reiniciar() { D = defaults(); DB.save(D); },
+  async subirImagen(blob) { return blobADataURL(blob); },
+  async borrarImagen() {},
+  suscribir() {}
+};
+
+/* ── Supabase ── */
+let sb = null;
+async function rpc(name, args) { const { data, error } = await sb.rpc(name, args || {}); if (error) throw error; return data; }
+const sbApi = {
+  async init() {
+    if (sb) return;
+    if (!window.supabase) throw new Error('No se pudo cargar Supabase');
+    sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true } });
+  },
+  info: () => rpc('pub_info'),
+  clienteVer: (c, t) => rpc('cliente_ver', { p_codigo: c, p_tel4: t }),
+  clienteCanjear: (c, t, p) => rpc('cliente_canjear', { p_codigo: c, p_tel4: t, p_premio: p }),
+  async staffLogin(email, pass) {
+    const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pass });
+    if (error) return false;
+    try { await rpc('panel_estado'); return true; } catch (e) { await sb.auth.signOut(); return 'nostaff'; }
+  },
+  async staffSession() { const { data } = await sb.auth.getSession(); return !!(data && data.session); },
+  async staffLogout() { if (this._ch) { sb.removeChannel(this._ch); this._ch = null; } await sb.auth.signOut(); },
+  async estado() { const d = await rpc('panel_estado'); d.demo = false; return d; },
+  guardarCliente: d => rpc('panel_guardar_cliente', { p: d }),
+  registrarVisita: (cid, o) => rpc('panel_registrar_visita', { p_cliente: cid, p_servicios: o.servIds || [], p_monto: o.monto, p_cumple: !!o.cumple, p_premio: o.premioId || null, p_vale: o.valeId || null }),
+  ajustar: (cid, pts, motivo) => rpc('panel_ajustar', { p_cliente: cid, p_pts: pts, p_motivo: motivo }),
+  canjeResolver: (id, accion) => rpc('panel_canje_resolver', { p_id: id, p_accion: accion }),
+  guardarServicio: d => rpc('panel_guardar_servicio', { p: d }),
+  guardarPremio: d => rpc('panel_guardar_premio', { p: d }),
+  guardarNivel: n => rpc('panel_guardar_nivel', { p: n }),
+  guardarConfig: o => rpc('panel_guardar_config', { p: o }),
+  borrar: (tabla, id) => rpc('panel_borrar', { p_tabla: tabla, p_id: id }),
+  async subirImagen(blob) {
+    const name = newId() + '.jpg';
+    const { error } = await sb.storage.from('premios').upload(name, blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
+    if (error) throw error;
+    return sb.storage.from('premios').getPublicUrl(name).data.publicUrl;
+  },
+  async borrarImagen(url) { const m = /\/premios\/([^/?]+)$/.exec(url || ''); if (m) await sb.storage.from('premios').remove([m[1]]); },
+  suscribir(cb) {
+    if (this._ch) return;
+    this._ch = sb.channel('pelu-equipo');
+    ['canjes', 'clientes', 'movimientos'].forEach(t => this._ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, cb));
+    this._ch.subscribe();
+  }
+};
+const api = MODE === 'sb' ? sbApi : demoApi;
+/* ═══════════════════════════════════════════════════════════
+   Vistas
+═══════════════════════════════════════════════════════════ */
+const ui = { mode: 'boot', tab: 'inicio', cid: null, q: '', reg: { cid: null, sel: [], monto: 0, manual: false, cumple: true, premioId: '', valeId: '' }, kiosk: null, cli: null, img: { blob: null, quitar: false, url: '' } };
+let SALON = 'Mi peluquería';
+const salonNombre = () => (S && S.config && S.config.salon) || SALON;
+const linkCliente = c => location.href.split('#')[0].split('?')[0] + '?c=' + encodeURIComponent(c.codigo);
+
+const ICONS = {
+  home: '<path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+  scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1L20 20M8.1 15.9L20 4"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.8c2 .6 3.2 2.3 3.5 5.2"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8M12 8C10 3 6 3.5 7 6c.6 1.5 3 2 5 2zM12 8c2-5 6-4.5 5-2-.6 1.5-3 2-5 2z"/>',
+  sliders: '<path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1"/><circle cx="16" cy="6" r="2.2"/><circle cx="10" cy="12" r="2.2"/><circle cx="18" cy="18" r="2.2"/>',
+  qr: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3M14 21h3M21 14v3M21 21v0"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  wa: '<path d="M4 20l1.3-4.2A8 8 0 1 1 8.3 18.8z"/>',
+  refresh: '<path d="M20 11a8 8 0 0 0-14.3-4.2M4 4v4h4M4 13a8 8 0 0 0 14.3 4.2M20 20v-4h-4"/>',
+  sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/>',
+  moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>'
+};
+const svg = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+function isLight(hex) { const h = hex.replace('#', ''); const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16); return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62; }
+const multTxt = m => '×' + String(m).replace('.', ',');
+const primerNombre = n => n.trim().split(/\s+/)[0];
+
+/* ── tarjeta de muestrario ── */
+function cardHTML(c) {
+  const n = nivelDe(c), nx = siguienteNivel(c);
+  const sw = nivelesOrd().map(x => `<div class="sw ${x.id === n.id ? 'on' : ''} ${x.desde < n.desde ? 'done' : ''} ${isLight(x.color) ? 'light' : ''}" style="--c:${esc(x.color)}"><small>${esc(x.nombre)}</small>${x.id === n.id ? `<b>${multTxt(x.mult)}</b>` : ''}</div>`).join('');
+  const next = nx ? `Con <b>${nx.desde - c.ptsTotales}</b> puntos más pasás a ${esc(nx.nombre)}.` : `Estás en el nivel más alto.`;
+  return `<article class="pcard" aria-label="Tarjeta de ${esc(c.nombre)}">
+    <div class="who"><div><div class="salon">${esc(salonNombre())}</div><h2>${esc(c.nombre)}</h2><div class="code">${esc(c.codigo)}</div></div>
+      <div class="qr" data-qr="${esc(c.codigo)}"><span>${esc(c.codigo)}</span></div></div>
+    <div class="big"><b>${c.puntos}</b><span>puntos para canjear</span></div>
+    <p class="next">${next}</p>
+    <p class="keep">Tu nivel se mantiene aunque canjees: cuenta lo acumulado (${c.ptsTotales} pts).</p>
+    <div class="swatches" role="img" aria-label="Nivel actual: ${esc(n.nombre)}">${sw}</div>
+  </article>`;
+}
+function stampsHTML(c) {
+  const meta = S.config.sellosMeta;
+  let h = '';
+  for (let i = 0; i < meta; i++) {
+    const on = i < c.sellos, last = i === meta - 1;
+    h += `<div class="stamp ${on ? 'on' : ''} ${last && !on ? 'gift' : ''}">${on ? svg('scissors') : (last ? svg('gift') : '')}</div>`;
+  }
+  const faltan = meta - c.sellos;
+  return `<div class="panel"><div class="row between"><b>Tarjeta de visitas</b><span class="muted small num">${c.sellos} de ${meta}</span></div>
+    <div class="stamps">${h}</div>
+    <p class="hint">${faltan === 1 ? 'La próxima visita completa la tarjeta.' : `Te faltan ${faltan} visitas.`} Al completarla: ${esc(S.config.valeSellos)}.</p></div>`;
+}
+function premioImg(p) { return `<div class="prize-img ${p.imagen ? '' : 'noimg'}"><span class="ph">${svg('gift')}</span>${p.imagen ? `<img src="${esc(p.imagen)}" alt="${esc(p.nombre)}" loading="lazy" onerror="this.remove()">` : ''}</div>`; }
+function premiosHTML(c, canjear) {
+  const vales = valesDe(c.id).map(v => `<div class="reward"><span class="tag ok">Vale</span><div class="grow"><b>${esc(v.nombre)}</b><div class="small muted">Sin vencimiento · pedilo en el salón</div></div></div>`).join('');
+  const ps = S.premios.filter(p => p.activo).sort((a, b) => a.costo - b.costo).map(p => {
+    const ok = c.puntos >= p.costo, pct = Math.min(100, Math.round(c.puntos / p.costo * 100));
+    return `<article class="prize">${premioImg(p)}<div class="prize-body"><h3>${esc(p.nombre)}</h3>${p.descripcion ? `<p class="small muted">${esc(p.descripcion)}</p>` : ''}
+      <div class="row between" style="margin-top:auto;padding-top:10px"><b class="cost num">${p.costo} puntos</b>${ok ? (canjear ? `<button class="btn sm" data-a="canjear" data-id="${p.id}">Canjear</button>` : '<span class="small pos"><b>Alcanza</b></span>') : `<span class="small muted num">Faltan ${p.costo - c.puntos}</span>`}</div>
+      ${ok ? '' : `<div class="bar" style="margin-top:8px"><i style="width:${pct}%"></i></div>`}</div></article>`;
+  }).join('');
+  return `${vales ? `<div class="list" style="margin-bottom:12px">${vales}</div>` : ''}${ps ? `<div class="pgrid">${ps}</div>` : '<div class="list"><div class="empty"><b>Todavía no hay premios</b>Cargalos desde el catálogo.</div></div>'}`;
+}
+function canjesPendientesHTML(c) {
+  const ks = S.canjes.filter(k => k.clienteId === c.id && k.estado === 'pendiente');
+  if (!ks.length) return '';
+  return `<section class="canje-card"><b>${ks.length === 1 ? 'Tenés un premio para retirar' : 'Tenés ' + ks.length + ' premios para retirar'}</b><p class="small">Mostrá el código en el salón. Los puntos ya se descontaron.</p>${ks.map(k => `<div class="row between" style="padding-top:10px;border-top:1px solid rgba(255,255,255,.25);margin-top:10px"><span>${esc(k.nombre)}</span><span class="code-big">${esc(k.codigo)}</span></div>`).join('')}</section>`;
+}
+function historyHTML(c, n = 12) {
+  const ms = movsDe(c.id).slice(0, n);
+  if (!ms.length) return '<div class="list"><div class="empty"><b>Sin movimientos todavía</b>Los puntos aparecen acá después de la primera visita.</div></div>';
+  return '<div class="list">' + ms.map(m => `<div class="item"><div class="grow"><b>${esc(m.detalle)}</b><div class="small muted">${fdate(m.fecha)}${m.monto ? ' · ' + money(m.monto) : ''}</div></div><div class="pts ${m.puntos > 0 ? 'pos' : m.puntos < 0 ? 'neg' : 'muted'}">${m.puntos > 0 ? '+' : ''}${m.puntos || '—'}</div></div>`).join('') + '</div>';
+}
+
+/* ── ingreso del cliente ── */
+function demoHint() {
+  if (MODE !== 'demo' || !D || !D.clientes.length) return '';
+  const c = D.clientes[0];
+  return `<p class="banner" style="margin-top:20px">Modo demostración: probá con el código <b>${esc(c.codigo)}</b> y los dígitos <b>${esc(last4(c.telefono))}</b>.</p>`;
+}
+function gateHTML() {
+  const pre = new URLSearchParams(location.search).get('c') || '';
+  return `<div class="gate">
+    <button class="iconbtn theme-fab" data-a="toggle-tema" aria-label="Cambiar tema">${svg(document.documentElement.dataset.theme === 'light' ? 'moon' : 'sun')}</button>
+    <div class="strips" aria-hidden="true"><i style="--c:#5B3A29"></i><i style="--c:#B4622D"></i><i style="--c:#DDB85C"></i><i style="--c:#CDD3DC"></i></div>
+    <h1>${esc(salonNombre())}</h1>
+    <p class="lead">Mirá tus puntos, tus premios y canjealos desde tu celular.</p>
+    <form id="f-lookup" class="stack">
+      <label class="f"><span>Código de tu tarjeta</span><input type="text" name="codigo" required autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="PL-XXXXXX" value="${esc(pre)}"></label>
+      <label class="f"><span>Últimos 4 dígitos de tu teléfono</span><input type="text" name="tel4" required inputmode="numeric" maxlength="4" pattern="[0-9]{4}" autocomplete="off" placeholder="0000"><div class="hint">El salón te pasa el código por WhatsApp o en tu tarjeta.</div></label>
+      <button class="btn block" type="submit">Ver mis puntos</button>
+    </form>${demoHint()}
+    <p style="margin-top:34px"><a class="muted" href="#panel">Acceso del equipo</a></p>
+  </div>`;
+}
+function panelLoginHTML() {
+  const conServidor = MODE === 'sb';
+  return `<div class="gate">
+    <button class="iconbtn theme-fab" data-a="toggle-tema" aria-label="Cambiar tema">${svg(document.documentElement.dataset.theme === 'light' ? 'moon' : 'sun')}</button>
+    <h1>Panel del equipo</h1><p class="lead">${esc(salonNombre())}</p>
+    <form id="f-plogin" class="stack">
+      ${conServidor ? `<label class="f"><span>Email</span><input type="text" name="email" required autocomplete="username" inputmode="email"></label>
+      <label class="f"><span>Contraseña</span><input type="password" name="pass" required autocomplete="current-password"></label>`
+      : `<label class="f"><span>PIN del panel</span><input type="password" name="pass" required inputmode="numeric" autocomplete="off"><div class="hint">Modo demostración: el PIN inicial es 1234.</div></label>`}
+      <button class="btn block" type="submit">Entrar</button></form>
+    <p style="margin-top:34px"><a class="muted" href="#" data-a="ir-cliente">Volver a la tarjeta de clientes</a></p></div>`;
+}
+function clienteView(c) {
+  return `<header class="top"><div class="grow brand">${esc(salonNombre())}<small>Tu tarjeta de puntos</small></div>${themeToggleHTML()}<button class="iconbtn" data-a="refrescar" aria-label="Actualizar">${svg('refresh')}</button><button class="btn ghost sm" data-a="salir-cliente">Salir</button></header>
+  <main class="view centered stack" style="gap:16px">${cardHTML(c)}${canjesPendientesHTML(c)}${stampsHTML(c)}
+    <section><h2 style="margin-top:6px">Premios para canjear</h2>${premiosHTML(c, true)}</section>
+    <section><h2>Tus últimos movimientos</h2>${historyHTML(c)}</section>${instalarHTML()}</main>`;
+}
+
+/* ── panel del salón ── */
+const TABS = [['inicio', 'Inicio', 'home'], ['registrar', 'Registrar', 'scissors'], ['clientes', 'Clientes', 'users'], ['catalogo', 'Catálogo', 'gift'], ['ajustes', 'Ajustes', 'sliders']];
+function staffShell() {
+  const np = S.canjes.filter(k => k.estado === 'pendiente').length;
+  const nav = TABS.map(t => `<button data-a="tab" data-t="${t[0]}" ${ui.tab === t[0] ? 'aria-current="page"' : ''}>${svg(t[2])}<span>${t[1]}</span>${t[0] === 'inicio' ? `<i class="badge" id="badge-inicio" ${np ? '' : 'hidden'}>${np}</i>` : ''}</button>`).join('');
+  return `<header class="top"><div class="grow brand">${esc(S.config.salon)}<small>Panel del equipo</small></div>${themeToggleHTML()}<button class="btn ghost sm" data-a="salir">Salir</button></header>
+  <main class="view" id="view">${staffView()}</main><nav class="nav" aria-label="Secciones">${nav}</nav>`;
+}
+function staffView() {
+  return ({ inicio: inicioView, registrar: registrarView, clientes: clientesView, catalogo: catalogoView, ajustes: ajustesView })[ui.tab]();
+}
+function inicioView() {
+  const now = new Date(), mes = now.getMonth(), anio = now.getFullYear();
+  const visMes = S.movimientos.filter(m => m.tipo === 'visita' && new Date(m.fecha).getMonth() === mes && new Date(m.fecha).getFullYear() === anio);
+  const fact = visMes.reduce((a, m) => a + m.monto, 0);
+  const circ = S.clientes.reduce((a, c) => a + c.puntos, 0);
+  const dias = [];
+  for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = d.toDateString(); dias.push({ l: d.toLocaleDateString('es-AR', { weekday: 'short' }).slice(0, 3), n: S.movimientos.filter(m => m.tipo === 'visita' && new Date(m.fecha).toDateString() === k).length }); }
+  const mx = Math.max(1, ...dias.map(d => d.n));
+  const cumples = S.clientes.filter(c => c.nacimiento && proxCumple(c) <= 14 && !cumpleYaRegalado(c)).sort((a, b) => proxCumple(a) - proxCumple(b)).slice(0, 5);
+  const react = S.clientes.filter(c => diasSinVenir(c) >= S.config.diasInactivo).sort((a, b) => diasSinVenir(b) - diasSinVenir(a)).slice(0, 5);
+  const filaCli = (c, sub, msg) => `<div class="item"><span class="avatar" style="background:${esc(nivelDe(c).color)};${isLight(nivelDe(c).color) ? 'color:#2a2116' : ''}">${esc(iniciales(c.nombre))}</span><button class="grow" style="text-align:left" data-a="abrir-cli" data-id="${c.id}"><b>${esc(c.nombre)}</b><div class="small muted">${sub}</div></button>${c.telefono ? `<a class="btn ghost sm" target="_blank" rel="noopener" href="${waLink(c.telefono, msg)}">${svg('wa')}Escribir</a>` : ''}</div>`;
+  const pend = S.canjes.filter(k => k.estado === 'pendiente').sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const canjesHTML = pend.length ? `<h2 style="margin-top:0">Canjes para entregar</h2><div class="list" style="border-color:var(--violet)">${pend.map(k => { const cl = getCli(k.clienteId); return `<div class="item" style="flex-wrap:wrap"><div class="grow"><b>${esc(k.nombre)}</b><div class="small muted">${esc(cl ? cl.nombre : 'Cliente')} · pidió el ${fdate(k.fecha)} · ${k.costo} pts</div></div><span class="code-big" style="color:var(--violet-d)">${esc(k.codigo)}</span><div class="row" style="width:100%;gap:8px"><button class="btn sm grow" data-a="canje-entregar" data-id="${k.id}">Marcar entregado</button><button class="btn ghost sm" data-a="canje-cancelar" data-id="${k.id}">Cancelar</button></div></div>`; }).join('')}</div>` : '';
+  return `${MODE === 'demo' ? `<div class="banner"><span class="grow">Modo demostración: los datos están solo en este navegador, así que los clientes no pueden verlos en su celular. Para eso conectá Supabase (ver supabase.sql).</span>${S.demo ? '<button class="btn sm" data-a="vaciar-demo">Borrar los clientes de ejemplo</button>' : ''}</div>` : ''}
+  <h1>Hoy en el salón</h1>${canjesHTML}
+  <div class="row" style="gap:10px;margin-bottom:14px"><button class="btn grow" data-a="tab" data-t="registrar">${svg('scissors')}Registrar visita</button><button class="btn ghost" data-a="nuevo-cli">${svg('plus')}Cliente</button></div>
+  <div class="tiles"><button class="tile hero" data-a="tab" data-t="clientes"><b>${S.clientes.length}</b><span>clientes · tocá para ver el listado</span></button><div class="tile"><b>${visMes.length}</b><span>visitas este mes</span></div><div class="tile"><b>${money(fact)}</b><span>cargado este mes</span></div><div class="tile"><b>${circ}</b><span>puntos en circulación</span></div></div>
+  <h2>Visitas de los últimos 7 días</h2><div class="panel"><div class="bars">${dias.map(d => `<div><span class="num">${d.n || ''}</span><i style="height:${Math.round(d.n / mx * 64)}px"></i><span>${d.l}</span></div>`).join('')}</div></div>
+  <h2>Cumpleaños próximos</h2>${cumples.length ? '<div class="list">' + cumples.map(c => filaCli(c, proxCumple(c) === 0 ? '¡Cumple hoy!' : `Cumple en ${proxCumple(c)} días · +${S.config.ptsCumple} pts de regalo`, `¡Feliz cumple ${primerNombre(c.nombre)}! Te esperamos en ${S.config.salon} con un regalo de ${S.config.ptsCumple} puntos.`)).join('') + '</div>' : '<div class="list"><div class="empty"><b>Sin cumpleaños cerca</b>Cargá la fecha de nacimiento al crear clientes.</div></div>'}
+  <h2>Para volver a ver</h2>${react.length ? '<div class="list">' + react.map(c => filaCli(c, `Hace ${diasSinVenir(c)} días · ${c.puntos} pts guardados`, `Hola ${primerNombre(c.nombre)}! Hace un tiempo que no te vemos por ${S.config.salon}. Tenés ${c.puntos} puntos para usar.`)).join('') + '</div>' : `<div class="list"><div class="empty"><b>Todos vinieron hace poco</b>Acá aparecen quienes llevan más de ${S.config.diasInactivo} días sin visitarte.</div></div>`}`;
+}
+
+/* clientes */
+function clientListHTML() {
+  const q = ui.q.trim().toLowerCase(), qd = digits(ui.q);
+  const list = S.clientes.filter(c => !q || c.nombre.toLowerCase().includes(q) || c.codigo.toLowerCase().includes(q) || (qd.length >= 3 && digits(c.telefono).includes(qd))).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+  if (!list.length) return `<div class="empty"><b>${S.clientes.length ? 'No encontramos a nadie' : 'Todavía no hay clientes'}</b>${S.clientes.length ? 'Probá con otro nombre, teléfono o código.' : 'Tocá “Nuevo cliente” para cargar el primero.'}</div>`;
+  return list.map(c => { const n = nivelDe(c); return `<button class="item" data-a="abrir-cli" data-id="${c.id}"><span class="avatar" style="background:${esc(n.color)};${isLight(n.color) ? 'color:#2a2116' : ''}">${esc(iniciales(c.nombre))}</span><span class="grow"><b>${esc(c.nombre)}</b><span class="small muted" style="display:block">${esc(n.nombre)} · ${c.visitas} visita${c.visitas === 1 ? '' : 's'}${c.ultimaVisita ? ' · última ' + fdate(c.ultimaVisita) : ''}</span></span><span class="pts">${c.puntos}<span class="small muted" style="font:500 12px var(--f-body)"> pts</span></span></button>`; }).join('');
+}
+function clientesView() {
+  if (ui.cid && getCli(ui.cid)) return clienteDetalle(getCli(ui.cid));
+  ui.cid = null;
+  return `<h1>Clientes</h1><label class="f"><span class="hide">Buscar</span><input type="search" id="q-cli" placeholder="Buscar por nombre, teléfono o código" value="${esc(ui.q)}" autocomplete="off"></label>
+  <div class="list" id="lista-cli" style="margin-top:12px">${clientListHTML()}</div>
+  <button class="btn fab" data-a="nuevo-cli">${svg('plus')}Nuevo cliente</button>`;
+}
+function clienteDetalle(c) {
+  const ref = c.referidoPor ? getCli(c.referidoPor) : null;
+  return `<button class="btn ghost sm" data-a="volver-cli" style="margin-bottom:12px">${svg('back')}Clientes</button>
+  <div class="stack" style="gap:16px">${cardHTML(c)}
+    <div class="chips"><button class="btn sm" data-a="reg-para" data-id="${c.id}">${svg('scissors')}Registrar visita</button><button class="btn ghost sm" data-a="ajuste" data-id="${c.id}">Ajustar puntos</button>${c.telefono ? `<a class="btn ghost sm" target="_blank" rel="noopener" href="${waLink(c.telefono, `Hola ${primerNombre(c.nombre)}! Ya podés ver tus puntos y canjear premios desde tu celular: ${linkCliente(c)}\nTu código es ${c.codigo}. Para entrar te pedimos los últimos 4 dígitos de tu teléfono.`)}">${svg('wa')}Enviar tarjeta</a>` : ''}<button class="btn ghost sm" data-a="editar-cli" data-id="${c.id}">Editar datos</button></div>
+    <div class="panel small"><div><b>Teléfono:</b> ${esc(c.telefono) || '—'}</div><div><b>Código de tarjeta:</b> ${esc(c.codigo)}</div><div><b>Nacimiento:</b> ${c.nacimiento ? new Date(c.nacimiento + 'T12:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long' }) : '—'}</div>${ref ? `<div><b>Lo recomendó:</b> ${esc(ref.nombre)}</div>` : ''}${c.notas ? `<div><b>Notas:</b> ${esc(c.notas)}</div>` : ''}<div><b>Puntos acumulados en total:</b> ${c.ptsTotales} (definen el nivel)</div></div>
+    ${stampsHTML(c)}<section><h2 style="margin-top:6px">Premios</h2>${premiosHTML(c, false)}</section>
+    <section><h2 style="margin-top:6px">Historial</h2>${historyHTML(c, 30)}</section>
+    <button class="btn danger sm" data-a="borrar-cli" data-id="${c.id}" style="align-self:flex-start">Eliminar cliente</button></div>`;
+}
+
+/* registrar visita */
+function regReset() { ui.reg = { cid: null, sel: [], monto: 0, manual: false, cumple: true, premioId: '', valeId: '' }; }
+function regPickerList() {
+  const q = ui.q.trim().toLowerCase(), qd = digits(ui.q);
+  const list = S.clientes.filter(c => !q || c.nombre.toLowerCase().includes(q) || c.codigo.toLowerCase() === q || (qd.length >= 3 && digits(c.telefono).includes(qd))).sort((a, b) => (b.ultimaVisita || '').localeCompare(a.ultimaVisita || '')).slice(0, 12);
+  if (!list.length) return `<div class="empty"><b>No encontramos a nadie</b>Revisá el nombre o creá el cliente nuevo.<div style="margin-top:12px"><button class="btn sm" data-a="nuevo-cli">${svg('plus')}Nuevo cliente</button></div></div>`;
+  return list.map(c => `<button class="item" data-a="reg-elegir" data-id="${c.id}"><span class="grow"><b>${esc(c.nombre)}</b><span class="small muted" style="display:block">${esc(c.codigo)} · ${esc(nivelDe(c).nombre)}</span></span><span class="pts">${c.puntos}<span class="small muted" style="font:500 12px var(--f-body)"> pts</span></span></button>`).join('');
+}
+function regPreviewHTML() {
+  const r = ui.reg, c = getCli(r.cid), g = puntosPorMonto(r.monto, c), meta = S.config.sellosMeta;
+  const disp = c.puntos + g + (r.cumple && esCumpleMes(c) && !cumpleYaRegalado(c) ? S.config.ptsCumple : 0);
+  const premios = S.premios.filter(p => p.activo && p.costo <= disp).sort((a, b) => a.costo - b.costo);
+  if (r.premioId && !premios.some(p => p.id === r.premioId)) r.premioId = '';
+  const vales = valesDe(c.id);
+  const bday = esCumpleMes(c) && !cumpleYaRegalado(c);
+  const cierra = c.sellos + 1 >= meta;
+  return `<div class="panel stack" style="gap:10px">
+    <div class="row between"><span>Puntos que suma <span class="muted small">(${esc(nivelDe(c).nombre)} ${multTxt(nivelDe(c).mult)})</span></span><b class="pts pos">+${g}</b></div>
+    <div class="row between"><span>Tarjeta de visitas</span><b class="num">${cierra ? '¡Se completa!' : (c.sellos + 1) + ' de ' + meta}</b></div>
+    ${bday ? `<label class="row" style="gap:10px"><input type="checkbox" data-reg="cumple" ${r.cumple ? 'checked' : ''} style="width:22px;height:22px"><span>Es su mes de cumpleaños: sumar <b>+${S.config.ptsCumple}</b> puntos de regalo</span></label>` : ''}
+    <label class="f"><span>Canjear un premio con esta visita</span><select data-reg="premioId"><option value="">No canjea nada</option>${premios.map(p => `<option value="${p.id}" ${r.premioId === p.id ? 'selected' : ''}>${esc(p.nombre)} — ${p.costo} pts</option>`).join('')}</select></label>
+    ${vales.length ? `<label class="f"><span>Usar un vale</span><select data-reg="valeId"><option value="">No usa vales</option>${vales.map(v => `<option value="${v.id}" ${r.valeId === v.id ? 'selected' : ''}>${esc(v.nombre)}</option>`).join('')}</select></label>` : ''}
+    <div class="row between" style="border-top:1px solid var(--line);padding-top:10px"><span>Saldo después de la visita</span><b class="pts num">${disp - (r.premioId ? (S.premios.find(p => p.id === r.premioId) || {}).costo || 0 : 0)}</b></div></div>`;
+}
+function registrarView() {
+  const r = ui.reg;
+  if (!r.cid || !getCli(r.cid)) {
+    return `<h1>Registrar visita</h1><div class="row" style="gap:10px"><label class="f grow"><span class="hide">Buscar cliente</span><input type="search" id="q-reg" placeholder="Buscar cliente" value="${esc(ui.q)}" autocomplete="off"></label><button class="btn ghost" data-a="escanear" aria-label="Escanear tarjeta">${svg('qr')}Escanear</button></div>
+    <div class="list" id="lista-reg" style="margin-top:12px">${regPickerList()}</div>`;
+  }
+  const c = getCli(r.cid), n = nivelDe(c);
+  return `<h1>Registrar visita</h1>
+  <div class="panel row" style="margin-bottom:14px"><span class="avatar" style="background:${esc(n.color)};${isLight(n.color) ? 'color:#2a2116' : ''}">${esc(iniciales(c.nombre))}</span><div class="grow"><b>${esc(c.nombre)}</b><div class="small muted">${esc(n.nombre)} · ${c.puntos} puntos</div></div><button class="btn ghost sm" data-a="reg-cambiar">Cambiar</button></div>
+  <div class="stack" style="gap:16px">
+    <div><div class="f" style="margin-bottom:8px"><span style="font-weight:650;color:var(--ink)">Servicios</span></div><div class="chips">${S.servicios.map(s => `<button class="chip" data-a="reg-serv" data-id="${s.id}" aria-pressed="${r.sel.includes(s.id)}">${esc(s.nombre)}<span class="small num" style="opacity:.8">${money(s.precio)}</span></button>`).join('') || '<span class="muted">Cargá servicios en el catálogo, o ingresá el total a mano.</span>'}</div></div>
+    <label class="f"><span>Total cobrado ($)</span><input type="number" inputmode="numeric" min="0" step="100" id="reg-monto" value="${r.monto || ''}" placeholder="0"><div class="hint">Se calcula con los servicios elegidos. Podés corregirlo si hubo descuento o extras.</div></label>
+    <div id="reg-preview">${regPreviewHTML()}</div>
+    <button class="btn block" data-a="reg-confirmar">Confirmar visita</button></div>`;
+}
+
+/* catálogo */
+function catalogoView() {
+  return `<h1>Catálogo</h1>
+  <div class="row between"><h2 style="margin:0">Premios para canjear</h2><button class="btn ghost sm" data-a="nuevo-premio">${svg('plus')}Premio</button></div>
+  <div class="list" style="margin-top:10px">${S.premios.slice().sort((a, b) => a.costo - b.costo).map(p => `<button class="item" data-a="editar-premio" data-id="${p.id}"><span class="thumb"><span class="ph">${svg('gift')}</span>${p.imagen ? `<img src="${esc(p.imagen)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</span><span class="grow"><b>${esc(p.nombre)}</b><span class="small muted" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(p.descripcion) || 'Sin descripción'}</span><span class="small" style="display:block;margin-top:2px;color:${p.activo ? 'var(--ok)' : 'var(--warn)'}">${p.activo ? 'Activo' : 'Pausado'} · visible para todos</span></span><span class="pts">${p.costo} pts</span></button>`).join('') || '<div class="empty"><b>Sin premios</b>Agregá el primero: algo que tus clientes quieran.</div>'}</div>
+  <div class="row between" style="margin-top:26px"><h2 style="margin:0">Servicios</h2><button class="btn ghost sm" data-a="nuevo-serv">${svg('plus')}Servicio</button></div>
+  <div class="list" style="margin-top:10px">${S.servicios.map(s => `<button class="item" data-a="editar-serv" data-id="${s.id}"><span class="grow"><b>${esc(s.nombre)}</b></span><span class="pts">${money(s.precio)}</span></button>`).join('') || '<div class="empty"><b>Sin servicios</b>Cargalos para sumar puntos con un toque.</div>'}</div>`;
+}
+
+/* ajustes */
+function ajustesView() {
+  const c = S.config;
+  const num = (k, label, hint) => `<label class="f"><span>${label}</span><input type="number" inputmode="numeric" min="0" data-cfg="${k}" value="${c[k]}">${hint ? `<div class="hint">${hint}</div>` : ''}</label>`;
+  return `<h1>Configuración</h1>${instalarHTML()}
+  <h2>Perfil del salón</h2><div class="panel stack"><label class="f"><span>Nombre del salón</span><input type="text" data-cfg="salon" value="${esc(c.salon)}"></label>
+    ${MODE === 'demo' ? `<label class="f"><span>PIN del panel (modo demostración)</span><input type="text" inputmode="numeric" data-cfg="pin" value="${esc(c.pin)}"><div class="hint">Solo oculta el panel en este dispositivo; no es una seguridad real.</div></label>` : '<p class="small muted">Conectado a Supabase. El acceso al panel se maneja con los usuarios del equipo.</p>'}</div>
+  <h2>Premios para canjear</h2><div class="panel row between"><div class="grow small muted">Se cargan y editan en la pestaña Catálogo: nombre, imagen y costo en puntos.</div><button class="btn ghost sm" data-a="tab" data-t="catalogo">${svg('gift')}Ir al catálogo</button></div>
+  <h2>Puntos por dinero gastado</h2><div class="panel stack">
+    <label class="f"><span>Pesos por punto</span><input type="number" inputmode="numeric" min="1" data-cfg="pesosPorPunto" id="cfg-pxp" value="${c.pesosPorPunto}" oninput="document.getElementById('cfg-pxp-ej').textContent='Ejemplo: una visita de \$15.000 suma '+Math.floor(15000/(parseInt(this.value)||1))+' puntos (antes del multiplicador de nivel).'"><div class="hint" id="cfg-pxp-ej">Ejemplo: una visita de \$15.000 suma ${Math.floor(15000 / (c.pesosPorPunto || 1))} puntos (antes del multiplicador de nivel).</div></label>
+    <div class="grid2">${num('ptsBienvenida', 'Puntos de bienvenida')}${num('ptsCumple', 'Regalo de cumpleaños')}</div></div>
+  <h2>Puntos por referidos</h2><div class="panel stack">${num('ptsReferido', 'Puntos por recomendar', 'Los recibe quien recomienda, en la primera visita del nuevo cliente.')}${num('diasInactivo', 'Días para “volver a ver”', 'A partir de cuántos días sin venir un cliente aparece en "Para volver a ver" del inicio.')}</div>
+  <h2>Tarjeta de visitas</h2><div class="panel stack">${num('sellosMeta', 'Visitas para completar la tarjeta')}<label class="f"><span>Vale que se gana al completarla</span><input type="text" data-cfg="valeSellos" value="${esc(c.valeSellos)}"></label></div>
+  <details class="more"><summary>Niveles y multiplicadores</summary><div class="panel stack" style="margin-top:12px">${nivelesOrd().map((n, i) => `<div class="row" style="align-items:flex-end;gap:8px"><label class="f grow"><span>Nombre</span><input type="text" data-nivel="${n.id}" data-k="nombre" value="${esc(n.nombre)}"></label><label class="f" style="width:84px"><span>Desde pts</span><input type="number" min="0" data-nivel="${n.id}" data-k="desde" value="${n.desde}" ${i === 0 ? 'disabled' : ''}></label><label class="f" style="width:74px"><span>Multipl.</span><input type="number" min="1" step="0.05" data-nivel="${n.id}" data-k="mult" value="${n.mult}"></label><input type="color" data-nivel="${n.id}" data-k="color" value="${esc(n.color)}" aria-label="Color de ${esc(n.nombre)}"></div>`).join('')}
+    <div class="hint">El nivel depende de los puntos acumulados en total (canjear no lo baja). El multiplicador aumenta los puntos que ganan por cada visita.</div></div></details>
+  <details class="more"><summary>Copia de seguridad</summary><div class="panel stack" style="margin-top:12px"><p class="small muted">${MODE === 'demo' ? 'Los datos viven en este navegador. Descargá una copia seguido, y usala para pasar todo a otro dispositivo.' : 'Los datos están en Supabase. Podés descargar una copia cuando quieras.'}</p>
+    <div class="chips"><button class="btn ghost sm" data-a="exportar">Descargar copia</button>${MODE === 'demo' ? '<label class="btn ghost sm" style="cursor:pointer">Restaurar copia<input type="file" accept="application/json" id="f-import" class="hide"></label>' : ''}<button class="btn ghost sm" data-a="exportar-csv">Clientes en CSV</button></div>
+    ${MODE === 'demo' ? '<button class="btn danger sm" data-a="borrar-todo" style="align-self:flex-start">Borrar todos los datos</button>' : ''}</div></details>`;
+}
+/* ═══════════════════════════════════════════════════════════
+   Render, rutas, hojas y acciones
+═══════════════════════════════════════════════════════════ */
+function toast(msg) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3200);
+}
+function mountQR(root = document) {
+  if (typeof QRCode === 'undefined') return;
+  root.querySelectorAll('[data-qr]').forEach(el => {
+    if (el.dataset.done) return; el.dataset.done = '1'; el.innerHTML = '';
+    try { new QRCode(el, { text: el.dataset.qr, width: 156, height: 156, correctLevel: QRCode.CorrectLevel.M }); } catch (e) { el.innerHTML = `<span>${esc(el.dataset.qr)}</span>`; }
+  });
+}
+function render() {
+  const root = $('#root');
+  if (ui.mode === 'boot') root.innerHTML = '<div class="gate"><p class="muted" role="status">Cargando…</p></div>';
+  else if (ui.mode === 'plogin') root.innerHTML = panelLoginHTML();
+  else if (ui.mode === 'cliente' && S && getCli(ui.kiosk)) root.innerHTML = clienteView(getCli(ui.kiosk));
+  else if (ui.mode === 'panel' && S) root.innerHTML = staffShell();
+  else { ui.mode = 'gate'; root.innerHTML = gateHTML(); }
+  mountQR(root);
+}
+function renderView() { const v = $('#view'); if (v && ui.mode === 'panel') { v.innerHTML = staffView(); mountQR(v); actualizarBadge(); } else render(); }
+function actualizarBadge() {
+  const b = $('#badge-inicio'); if (!b || !S) return;
+  const n = S.canjes.filter(k => k.estado === 'pendiente').length; b.textContent = n; b.hidden = !n;
+}
+
+function openSheet(title, html, onMount) {
+  closeSheet();
+  const el = document.createElement('div'); el.className = 'scrim'; el.id = 'scrim';
+  el.innerHTML = `<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><header><h2>${esc(title)}</h2><button class="iconbtn" data-a="cerrar" aria-label="Cerrar">${svg('x')}</button></header>${html}</div>`;
+  el.addEventListener('click', e => { if (e.target === el) closeSheet(); });
+  document.body.appendChild(el); mountQR(el); if (onMount) onMount(el);
+}
+function closeSheet() { stopScan(); const s = $('#scrim'); if (s) s.remove(); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+/* ── instalar como app ── */
+let instalarEvt = null;
+const esStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+const esIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function instalarHTML() {
+  if (esStandalone()) return '';
+  if (instalarEvt) return `<section class="panel row" style="margin-top:16px"><div class="grow"><b>Instalá la app</b><div class="small muted">Queda como un ícono en tu celular, sin abrir el navegador.</div></div><button class="btn sm" data-a="instalar">Instalar</button></section>`;
+  if (esIOS()) return `<section class="panel" style="margin-top:16px"><b>Instalá la app en tu iPhone</b><p class="small muted">Tocá el botón Compartir de Safari y elegí “Agregar a inicio”.</p></section>`;
+  return '';
+}
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); instalarEvt = e; if (!$('#scrim') && (ui.mode === 'cliente' || (ui.mode === 'panel' && ui.tab === 'ajustes'))) renderView(); });
+window.addEventListener('appinstalled', () => { instalarEvt = null; if (!$('#scrim')) render(); });
+const modoPanelGuardado = () => { try { return localStorage.getItem('pelu-panel') === '1'; } catch (e) { return false; } };
+const guardarModoPanel = v => { try { v ? localStorage.setItem('pelu-panel', '1') : localStorage.removeItem('pelu-panel'); } catch (e) {} };
+let forzarCliente = false;
+
+/* ── tema claro/oscuro ── */
+const temaGuardado = () => { try { return localStorage.getItem('pelu-tema'); } catch (e) { return null; } };
+function aplicarTema(t, guardar) {
+  document.documentElement.dataset.theme = t;
+  const mc = document.querySelector('meta[name=theme-color]'); if (mc) mc.content = t === 'light' ? '#F5F2F7' : '#101215';
+  if (guardar) { try { localStorage.setItem('pelu-tema', t); } catch (e) {} }
+}
+aplicarTema(temaGuardado() || 'dark', false);
+function themeToggleHTML() {
+  const claro = document.documentElement.dataset.theme === 'light';
+  return `<button class="iconbtn" data-a="toggle-tema" aria-label="${claro ? 'Cambiar a oscuro' : 'Cambiar a claro'}" title="${claro ? 'Modo oscuro' : 'Modo claro'}">${svg(claro ? 'moon' : 'sun')}</button>`;
+}
+
+const normCodigo = v => { let c = String(v || '').trim().toUpperCase().replace(/\s+/g, ''); if (/^[A-Z0-9]{6}$/.test(c)) c = 'PL-' + c; return c; };
+function vistaCliente(r) {
+  SALON = r.config.salon; ui.kiosk = r.cliente.id;
+  return { config: r.config, niveles: r.niveles, premios: r.premios, servicios: [], clientes: [r.cliente], movimientos: r.movimientos, vales: r.vales, canjes: r.canjes, demo: false };
+}
+const guardadas = () => { try { return JSON.parse(localStorage.getItem('pelu-cli')); } catch (e) { return null; } };
+const guardarCred = v => { try { v ? localStorage.setItem('pelu-cli', JSON.stringify(v)) : localStorage.removeItem('pelu-cli'); } catch (e) {} };
+async function refrescarCliente(silencioso) {
+  if (ui.mode !== 'cliente' || !ui.cli) return;
+  try {
+    const r = await api.clienteVer(ui.cli.c, ui.cli.t);
+    if (r && !r.error) { S = vistaCliente(r); if (!$('#scrim')) render(); if (!silencioso) toast('Puntos actualizados'); }
+  } catch (e) { if (!silencioso) toast('No pudimos actualizar. Revisá tu conexión.'); }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refrescarCliente(true); });
+setInterval(() => { if (!document.hidden) refrescarCliente(true); }, 30000);
+
+/* ── datos del panel ── */
+async function cargarPanel() { S = await api.estado(); SALON = S.config.salon; }
+async function recargar() { await cargarPanel(); }
+let remotoT = 0;
+function onRemoto() {
+  clearTimeout(remotoT);
+  remotoT = setTimeout(async () => {
+    if (ui.mode !== 'panel') return;
+    const antes = S.canjes.filter(k => k.estado === 'pendiente').length;
+    try { await cargarPanel(); } catch (e) { return; }
+    const ahora = S.canjes.filter(k => k.estado === 'pendiente').length;
+    if (ahora > antes) toast('Hay un canje nuevo para entregar');
+    const a = document.activeElement, escribiendo = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && $('#view') && $('#view').contains(a);
+    if (!$('#scrim') && !escribiendo) renderView(); else actualizarBadge();
+  }, 500);
+}
+setInterval(() => { if (ui.mode === 'panel' && !document.hidden) onRemoto(); }, 45000);
+
+/* ── rutas ── */
+async function route() {
+  if (!forzarCliente && !location.hash && modoPanelGuardado() && !new URLSearchParams(location.search).get('c')) { try { history.replaceState(null, '', location.pathname + location.search + '#panel'); } catch (e) {} }
+  ui.mode = 'boot'; render();
+  try {
+    await api.init();
+    try { const i = await api.info(); if (i && i.salon) SALON = i.salon; } catch (e) {}
+    if (location.hash === '#panel') {
+      if (await api.staffSession()) { await cargarPanel(); ui.mode = 'panel'; api.suscribir(onRemoto); } else ui.mode = 'plogin';
+    } else {
+      const g = guardadas();
+      ui.mode = 'gate';
+      if (g) {
+        const r = await api.clienteVer(g.c, g.t);
+        if (r && !r.error) { ui.cli = g; S = vistaCliente(r); ui.mode = 'cliente'; } else if (r && r.error) guardarCred(null);
+      }
+    }
+  } catch (e) {
+    console.error(e); ui.mode = location.hash === '#panel' ? 'plogin' : 'gate';
+    toast(e && e.code === '42501' ? 'Ese usuario no tiene permiso para el panel.' : 'No pudimos conectar. Revisá tu conexión e intentá de nuevo.');
+  }
+  render();
+}
+window.addEventListener('hashchange', route);
+
+/* ── formularios en hojas ── */
+function sheetCliente(id) {
+  const c = id ? getCli(id) : null;
+  openSheet(c ? 'Editar cliente' : 'Nuevo cliente', `<form id="f-cli" data-id="${id || ''}" class="stack">
+    <label class="f"><span>Nombre y apellido</span><input type="text" name="nombre" required value="${esc(c ? c.nombre : '')}" autocomplete="off"></label>
+    <label class="f"><span>Teléfono (WhatsApp)</span><input type="tel" name="telefono" required inputmode="tel" value="${esc(c ? c.telefono : '')}" placeholder="Con código de área, sin 0 ni 15"><div class="hint">Los últimos 4 dígitos son la clave para que el cliente vea sus puntos.</div></label>
+    <details class="more"${c && (c.nacimiento || c.notas) ? ' open' : ''}><summary>Más datos (opcional)</summary><div class="stack" style="margin-top:12px">
+    <label class="f"><span>Fecha de nacimiento</span><input type="date" name="nacimiento" value="${esc(c ? c.nacimiento : '')}"><div class="hint">Sirve para el regalo de cumpleaños.</div></label>
+    ${c ? '' : `<label class="f"><span>¿Lo recomendó alguien?</span><select name="referidoPor"><option value="">Nadie</option>${S.clientes.slice().sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).map(x => `<option value="${x.id}">${esc(x.nombre)}</option>`).join('')}</select></label>`}
+    <label class="f"><span>Notas</span><textarea name="notas" rows="2" placeholder="Ej: prefiere turnos de tarde">${esc(c ? c.notas : '')}</textarea></label>
+    </div></details>
+    <button class="btn block" type="submit">${c ? 'Guardar cambios' : 'Crear cliente'}</button></form>`);
+}
+function sheetAjuste(id) {
+  const c = getCli(id);
+  openSheet('Ajustar puntos', `<form id="f-ajuste" data-id="${id}" class="stack"><p class="muted small">${esc(c.nombre)} tiene ${c.puntos} puntos.</p>
+    <div class="chips" id="ajuste-chips">${[10, 20, 50, -10, -20].map(v => `<button type="button" class="chip qty" data-a="ajuste-chip" data-v="${v}">${v > 0 ? '+' : ''}${v}</button>`).join('')}</div>
+    <label class="f"><span>Puntos (+ o −)</span><input type="number" name="pts" id="ajuste-pts" required step="1" placeholder="Ej: 20 o -10" oninput="document.querySelectorAll('#ajuste-chips .chip').forEach(b=>b.setAttribute('aria-pressed', b.dataset.v===this.value?'true':'false'))"></label>
+    <label class="f"><span>Motivo</span><input type="text" name="motivo" required placeholder="Ej: compensación por demora"></label>
+    <button class="btn block" type="submit">Aplicar ajuste</button></form>`);
+}
+function sheetServicio(id) {
+  const s = id ? S.servicios.find(x => x.id === id) : null;
+  openSheet(s ? 'Editar servicio' : 'Nuevo servicio', `<form id="f-serv" data-id="${id || ''}" class="stack">
+    <label class="f"><span>Nombre</span><input type="text" name="nombre" required value="${esc(s ? s.nombre : '')}"></label>
+    <label class="f"><span>Precio ($)</span><input type="number" name="precio" required min="0" step="100" inputmode="numeric" value="${s ? s.precio : ''}"></label>
+    <button class="btn block" type="submit">Guardar</button>${s ? '<button class="btn danger block" type="button" data-a="borrar-serv" data-id="' + id + '">Eliminar servicio</button>' : ''}</form>`);
+}
+function imgboxHTML() {
+  const u = ui.img.blob ? ui.img.preview : (ui.img.quitar ? '' : ui.img.url);
+  return `<span class="ph">${svg('gift')}<span class="small">Sin imagen</span></span>${u ? `<img src="${esc(u)}" alt="Imagen del premio">` : ''}`;
+}
+function sheetPremio(id) {
+  const p = id ? S.premios.find(x => x.id === id) : null;
+  ui.img = { blob: null, quitar: false, url: p ? p.imagen : '', preview: '' };
+  openSheet(p ? 'Editar premio' : 'Nuevo premio', `<form id="f-premio" data-id="${id || ''}" class="stack">
+    <div class="imgbox" id="imgbox">${imgboxHTML()}</div>
+    <div class="row" style="gap:8px"><label class="btn ghost sm" style="cursor:pointer">${svg('plus')}Elegir imagen<input type="file" accept="image/*" id="f-img" class="hide"></label><button type="button" class="btn ghost sm" id="img-quitar" data-a="img-quitar" ${p && p.imagen ? '' : 'hidden'}>Quitar imagen</button></div>
+    <label class="f"><span>Nombre del premio</span><input type="text" name="nombre" required value="${esc(p ? p.nombre : '')}"></label>
+    <label class="f"><span>Descripción</span><textarea name="descripcion" rows="3" placeholder="Qué incluye y cómo se usa">${esc(p ? p.descripcion : '')}</textarea></label>
+    <label class="f"><span>Puntos necesarios</span><input type="number" name="costo" required min="1" inputmode="numeric" value="${p ? p.costo : ''}"></label>
+    <label class="row" style="gap:10px"><input type="checkbox" name="activo" ${!p || p.activo ? 'checked' : ''} style="width:22px;height:22px"><span>Los clientes lo pueden canjear</span></label>
+    <button class="btn block" type="submit" id="premio-guardar">Guardar premio</button>${p ? '<button class="btn danger block" type="button" data-a="borrar-premio" data-id="' + id + '">Eliminar premio</button>' : ''}</form>`);
+}
+function confirmSheet(titulo, texto, accion, id, label) {
+  openSheet(titulo, `<p style="margin-bottom:16px">${texto}</p><div class="stack"><button class="btn danger block" data-a="${accion}" data-id="${id || ''}">${label}</button><button class="btn ghost block" data-a="cerrar">Volver</button></div>`);
+}
+
+/* ── escaneo de QR ── */
+let scanStream = null, scanRaf = 0;
+function stopScan() { cancelAnimationFrame(scanRaf); if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; } }
+function abrirScan() {
+  openSheet('Escanear tarjeta', `<video class="video" id="scan-video" playsinline muted></video><p class="hint" id="scan-msg">Apuntá al código QR de la tarjeta del cliente.</p>`, async () => {
+    const msg = $('#scan-msg');
+    if (!('BarcodeDetector' in window) || !navigator.mediaDevices) { msg.textContent = 'Este navegador no puede escanear. Buscá al cliente por su código (PL-XXXXXX) o nombre.'; return; }
+    try {
+      const det = new BarcodeDetector({ formats: ['qr_code'] });
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const v = $('#scan-video'); v.srcObject = scanStream; await v.play();
+      const tick = async () => {
+        if (!scanStream) return;
+        try { const r = await det.detect(v); if (r.length) { const c = S.clientes.find(x => x.codigo === r[0].rawValue.trim()); if (c) { closeSheet(); ui.reg.cid = c.id; renderView(); toast('Tarjeta de ' + c.nombre); return; } msg.textContent = 'Ese código no es de ningún cliente. Probá de nuevo.'; } } catch (e) {}
+        scanRaf = requestAnimationFrame(tick);
+      };
+      tick();
+    } catch (e) { msg.textContent = 'No pudimos abrir la cámara. Revisá el permiso del navegador o buscá por nombre.'; }
+  });
+}
+
+/* ── exportar / importar ── */
+function descargar(nombre, texto, tipo) { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([texto], { type: tipo })); a.download = nombre; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 500); }
+
+/* ── acciones (clicks) ── */
+let ocupado = false;
+const ACT = {
+  cerrar: () => closeSheet(),
+  'ir-cliente': (t, e) => { e.preventDefault(); forzarCliente = true; try { history.replaceState(null, '', location.pathname + location.search); } catch (x) {} return route(); },
+  salir: async () => { guardarModoPanel(false); await api.staffLogout(); ui.cid = null; regReset(); ui.mode = 'plogin'; S = null; render(); },
+  'salir-cliente': () => { guardarCred(null); ui.cli = null; S = null; ui.mode = 'gate'; render(); },
+  'toggle-tema': () => { aplicarTema(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light', true); render(); },
+  refrescar: () => refrescarCliente(false),
+  instalar: async () => { if (!instalarEvt) return; instalarEvt.prompt(); try { await instalarEvt.userChoice; } catch (e) {} instalarEvt = null; render(); },
+  tab: t => { ui.tab = t.dataset.t; ui.cid = null; ui.q = ''; render(); window.scrollTo(0, 0); },
+  'nuevo-cli': () => sheetCliente(''),
+  'editar-cli': t => sheetCliente(t.dataset.id),
+  'abrir-cli': t => { closeSheet(); ui.tab = 'clientes'; ui.cid = t.dataset.id; render(); window.scrollTo(0, 0); },
+  'volver-cli': () => { ui.cid = null; renderView(); },
+  ajuste: t => sheetAjuste(t.dataset.id),
+  'borrar-cli': t => confirmSheet('¿Eliminar cliente?', `Se borra a <b>${esc(getCli(t.dataset.id).nombre)}</b> con todo su historial. No se puede deshacer.`, 'borrar-cli-ok', t.dataset.id, 'Sí, eliminar'),
+  'borrar-cli-ok': async t => { await api.borrar('cliente', t.dataset.id); await recargar(); closeSheet(); ui.cid = null; render(); toast('Cliente eliminado'); },
+  'reg-para': t => { regReset(); ui.reg.cid = t.dataset.id; ui.tab = 'registrar'; ui.q = ''; render(); window.scrollTo(0, 0); },
+  'reg-elegir': t => { regReset(); ui.reg.cid = t.dataset.id; renderView(); },
+  'reg-cambiar': () => { regReset(); ui.q = ''; renderView(); },
+  escanear: () => abrirScan(),
+  'reg-serv': t => {
+    const r = ui.reg, id = t.dataset.id, i = r.sel.indexOf(id);
+    if (i >= 0) r.sel.splice(i, 1); else r.sel.push(id);
+    if (!r.manual || !r.monto) { r.monto = r.sel.reduce((a, x) => a + (S.servicios.find(s => s.id === x) || { precio: 0 }).precio, 0); r.manual = false; }
+    renderView();
+  },
+  'reg-confirmar': async () => {
+    const r = ui.reg, c = getCli(r.cid);
+    if (!r.monto || r.monto <= 0) { toast('Ingresá el total cobrado'); return; }
+    const out = await api.registrarVisita(r.cid, { servIds: r.sel, monto: r.monto, cumple: r.cumple && esCumpleMes(c) && !cumpleYaRegalado(c), premioId: r.premioId, valeId: r.valeId });
+    await recargar();
+    const c2 = getCli(r.cid), wa = c2.telefono ? waLink(c2.telefono, `Hola ${primerNombre(c2.nombre)}! Hoy sumaste ${out.ganados} puntos en ${salonNombre()}. Ahora tenés ${c2.puntos} puntos (nivel ${nivelDe(c2).nombre}). Mirá tus premios y canjealos acá: ${linkCliente(c2)}`) : '';
+    regReset();
+    openSheet('Visita registrada', `<div class="stack"><div class="panel"><div class="row between"><span>Puntos ganados</span><b class="pts pos">+${out.ganados}</b></div><div class="row between" style="margin-top:8px"><span>Saldo de ${esc(primerNombre(c2.nombre))}</span><b class="pts">${c2.puntos}</b></div></div>
+      ${out.notas.map(n => `<div class="banner" style="background:var(--violet-s);color:var(--violet-d);margin:0">${esc(n)}</div>`).join('')}
+      ${wa ? `<a class="btn ghost block" target="_blank" rel="noopener" href="${wa}">${svg('wa')}Avisarle por WhatsApp</a>` : ''}<button class="btn block" data-a="cerrar">Listo</button></div>`);
+    renderView();
+  },
+  'canje-entregar': async t => { await api.canjeResolver(t.dataset.id, 'entregar'); await recargar(); renderView(); toast('Marcado como entregado'); },
+  'canje-cancelar': t => { const k = S.canjes.find(x => x.id === t.dataset.id), c = k && getCli(k.clienteId); confirmSheet('¿Cancelar el canje?', `Se devuelven <b>${k.costo} puntos</b> a ${esc(c ? c.nombre : 'la persona')} y el premio ya no se entrega.`, 'canje-cancelar-ok', k.id, 'Cancelar y devolver puntos'); },
+  'canje-cancelar-ok': async t => { await api.canjeResolver(t.dataset.id, 'cancelar'); await recargar(); closeSheet(); renderView(); toast('Canje cancelado, puntos devueltos'); },
+  canjear: t => {
+    const p = S.premios.find(x => x.id === t.dataset.id), c = getCli(ui.kiosk);
+    if (!p || c.puntos < p.costo) { toast('Todavía no te alcanzan los puntos'); return; }
+    openSheet('Canjear premio', `<div class="stack">${premioImg(p).replace('prize-img', 'prize-img big')}<div><h3 style="font-size:20px">${esc(p.nombre)}</h3>${p.descripcion ? `<p class="muted" style="margin-top:4px">${esc(p.descripcion)}</p>` : ''}</div>
+      <div class="panel stack" style="gap:8px"><div class="row between"><span>Tus puntos</span><b class="num">${c.puntos}</b></div><div class="row between"><span>Costo</span><b class="num">−${p.costo}</b></div><div class="row between" style="border-top:1px solid var(--line);padding-top:8px"><span>Te quedan</span><b class="num">${c.puntos - p.costo}</b></div></div>
+      <p class="small muted">Los puntos se descuentan ahora y tu nivel <b>${esc(nivelDe(c).nombre)}</b> se mantiene. Después mostrás el código en el salón para retirarlo.</p>
+      <button class="btn block" data-a="canjear-ok" data-id="${p.id}">Canjear por ${p.costo} puntos</button><button class="btn ghost block" data-a="cerrar">Ahora no</button></div>`);
+  },
+  'canjear-ok': async t => {
+    const r = await api.clienteCanjear(ui.cli.c, ui.cli.t, t.dataset.id);
+    if (r.error === 'puntos') { closeSheet(); await refrescarCliente(true); toast('Ya no te alcanzan los puntos para este premio'); return; }
+    if (r.error === 'premio') { closeSheet(); await refrescarCliente(true); toast('Ese premio ya no está disponible'); return; }
+    if (r.error) { closeSheet(); ACT['salir-cliente'](); toast('Volvé a ingresar tus datos'); return; }
+    S = vistaCliente(r); const k = r.canjeNuevo; render();
+    openSheet('¡Canje hecho!', `<div class="stack"><div class="canje-card" style="margin:0"><p>Mostrá este código en el salón para retirar <b>${esc(k.nombre)}</b>:</p><div class="code-big" style="font-size:40px;text-align:center;margin-top:10px">${esc(k.codigo)}</div></div><p class="small muted">Los puntos ya se descontaron. Te quedan ${r.cliente.puntos}. Este canje queda guardado en tu tarjeta hasta que lo retires.</p><button class="btn block" data-a="cerrar">Entendido</button></div>`);
+  },
+  'ajuste-chip': t => {
+    $('#ajuste-pts').value = t.dataset.v;
+    $('#ajuste-chips').querySelectorAll('.chip').forEach(b => b.setAttribute('aria-pressed', b === t ? 'true' : 'false'));
+  },
+  'nuevo-serv': () => sheetServicio(''), 'editar-serv': t => sheetServicio(t.dataset.id),
+  'borrar-serv': async t => { await api.borrar('servicio', t.dataset.id); await recargar(); closeSheet(); renderView(); toast('Servicio eliminado'); },
+  'nuevo-premio': () => sheetPremio(''), 'editar-premio': t => sheetPremio(t.dataset.id),
+  'img-quitar': () => { ui.img.blob = null; ui.img.quitar = true; $('#imgbox').innerHTML = imgboxHTML(); $('#img-quitar').hidden = true; },
+  'borrar-premio': async t => { const p = S.premios.find(x => x.id === t.dataset.id); await api.borrar('premio', t.dataset.id); if (p && p.imagen) api.borrarImagen(p.imagen).catch(() => {}); await recargar(); closeSheet(); renderView(); toast('Premio eliminado'); },
+  'vaciar-demo': () => confirmSheet('¿Borrar los clientes de ejemplo?', 'Se borran los clientes y movimientos de ejemplo. Tus servicios, premios y niveles se mantienen para que los edites.', 'vaciar-demo-ok', '', 'Borrar ejemplos'),
+  'vaciar-demo-ok': async () => { await api.vaciarClientes(); await recargar(); closeSheet(); render(); toast('Listo: empezás con la base vacía'); },
+  'borrar-todo': () => confirmSheet('¿Borrar todos los datos?', 'Se eliminan clientes, historial, catálogo y ajustes de este navegador. Descargá una copia antes si la necesitás.', 'borrar-todo-ok', '', 'Sí, borrar todo'),
+  'borrar-todo-ok': async () => { await api.reiniciar(); await recargar(); closeSheet(); ui.cid = null; regReset(); render(); toast('Datos borrados'); },
+  exportar: () => { descargar('puntos-peluqueria-' + new Date().toISOString().slice(0, 10) + '.json', JSON.stringify(S, null, 2), 'application/json'); toast('Copia descargada'); },
+  'exportar-csv': () => {
+    const rows = [['Nombre', 'Código', 'Teléfono', 'Nacimiento', 'Nivel', 'Puntos', 'Puntos acumulados', 'Visitas', 'Última visita']].concat(S.clientes.map(c => [c.nombre, c.codigo, c.telefono, c.nacimiento, nivelDe(c).nombre, c.puntos, c.ptsTotales, c.visitas, c.ultimaVisita ? String(c.ultimaVisita).slice(0, 10) : '']));
+    descargar('clientes.csv', '\ufeff' + rows.map(r => r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')).join('\n'), 'text/csv');
+  }
+};
+function errorAmigable(err) {
+  console.error(err);
+  if (err && (err.code === '42501' || /No autorizado/i.test(err.message || ''))) { ui.mode = 'plogin'; render(); return 'Tu sesión venció. Volvé a entrar.'; }
+  const m = (err && err.message) || '';
+  return (m && !/fetch|network|load failed|failed to/i.test(m)) ? m : 'No pudimos completar la acción. Revisá tu conexión e intentá de nuevo.';
+}
+document.addEventListener('click', async e => {
+  const t = e.target.closest('[data-a]'); if (!t || !ACT[t.dataset.a]) return;
+  if (ocupado && t.dataset.a !== 'cerrar') return;
+  ocupado = true;
+  try { await ACT[t.dataset.a](t, e); } catch (err) { toast(errorAmigable(err)); } finally { ocupado = false; }
+});
+
+/* ── formularios ── */
+document.addEventListener('submit', async e => {
+  const f = e.target; e.preventDefault(); if (ocupado) return;
+  const d = Object.fromEntries(new FormData(f)), btn = f.querySelector('button[type=submit]'), txt = btn && btn.textContent;
+  ocupado = true; if (btn) { btn.disabled = true; btn.textContent = 'Un momento…'; }
+  try {
+    if (f.id === 'f-lookup') {
+      const codigo = normCodigo(d.codigo), tel4 = digits(d.tel4);
+      const r = await api.clienteVer(codigo, tel4);
+      if (!r || r.error) { toast('El código y los dígitos no coinciden. Revisalos o preguntá en el salón.'); return; }
+      ui.cli = { c: codigo, t: tel4 }; guardarCred(ui.cli); S = vistaCliente(r); ui.mode = 'cliente';
+      try { history.replaceState(null, '', location.pathname); } catch (x) {} render(); window.scrollTo(0, 0);
+    } else if (f.id === 'f-plogin') {
+      const ok = await api.staffLogin(d.email, d.pass);
+      if (ok === 'nostaff') { toast('Ese usuario no tiene permiso para el panel. Pedile al administrador que lo habilite.'); return; }
+      if (!ok) { toast(MODE === 'sb' ? 'Email o contraseña incorrectos' : 'PIN incorrecto'); return; }
+      guardarModoPanel(true); await cargarPanel(); ui.mode = 'panel'; ui.tab = 'inicio'; api.suscribir(onRemoto); render();
+    } else if (f.id === 'f-cli') {
+      const c = await api.guardarCliente({ ...d, id: f.dataset.id || undefined });
+      await recargar(); closeSheet();
+      if (f.dataset.id) { renderView(); toast('Cambios guardados'); }
+      else { ui.tab = 'clientes'; ui.cid = c.id; render(); toast('Cliente creado. Enviale la tarjeta por WhatsApp.'); }
+    } else if (f.id === 'f-ajuste') {
+      const p = parseInt(d.pts, 10);
+      if (!p) { toast('Ingresá un número distinto de cero'); return; }
+      if (!(await api.ajustar(f.dataset.id, p, d.motivo))) { toast('No alcanzan los puntos para restar tanto'); return; }
+      await recargar(); closeSheet(); renderView(); toast('Ajuste aplicado');
+    } else if (f.id === 'f-serv') {
+      await api.guardarServicio({ id: f.dataset.id || newId(), nombre: d.nombre.trim(), precio: Math.max(0, parseInt(d.precio, 10) || 0) });
+      await recargar(); closeSheet(); renderView(); toast('Servicio guardado');
+    } else if (f.id === 'f-premio') {
+      const id = f.dataset.id, previo = id ? (S.premios.find(x => x.id === id) || {}).imagen || '' : '';
+      let imagen = ui.img.quitar ? '' : previo;
+      if (ui.img.blob) imagen = await api.subirImagen(ui.img.blob);
+      await api.guardarPremio({ id: id || newId(), nombre: d.nombre.trim(), descripcion: (d.descripcion || '').trim(), costo: Math.max(1, parseInt(d.costo, 10) || 1), imagen, activo: !!d.activo });
+      if (previo && previo !== imagen) api.borrarImagen(previo).catch(() => {});
+      await recargar(); closeSheet(); renderView(); toast('Premio guardado');
+    }
+  } catch (err) { toast(errorAmigable(err)); }
+  finally { ocupado = false; if (btn && btn.isConnected) { btn.disabled = false; btn.textContent = txt; } }
+});
+
+/* ── inputs en vivo ── */
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (t.id === 'q-cli') { ui.q = t.value; $('#lista-cli').innerHTML = clientListHTML(); }
+  else if (t.id === 'q-reg') { ui.q = t.value; $('#lista-reg').innerHTML = regPickerList(); }
+  else if (t.id === 'reg-monto') { ui.reg.monto = Math.max(0, parseInt(t.value, 10) || 0); ui.reg.manual = true; $('#reg-preview').innerHTML = regPreviewHTML(); }
+});
+document.addEventListener('change', async e => {
+  const t = e.target;
+  try {
+    if (t.dataset.reg) { const k = t.dataset.reg; ui.reg[k] = t.type === 'checkbox' ? t.checked : t.value; $('#reg-preview').innerHTML = regPreviewHTML(); return; }
+    if (t.id === 'f-img' && t.files[0]) {
+      try { ui.img.blob = await reducirImagen(t.files[0], MODE === 'demo' ? 640 : 900, MODE === 'demo' ? 0.72 : 0.82); ui.img.quitar = false; ui.img.preview = await blobADataURL(ui.img.blob); $('#imgbox').innerHTML = imgboxHTML(); $('#img-quitar').hidden = false; }
+      catch (x) { toast('No pudimos leer esa imagen. Probá con otra (JPG o PNG).'); }
+      return;
+    }
+    if (t.dataset.cfg) {
+      const k = t.dataset.cfg, txt = ['salon', 'pin', 'valeSellos'].includes(k);
+      const v = txt ? t.value.trim() : Math.max(k === 'sellosMeta' || k === 'pesosPorPunto' ? 1 : 0, parseInt(t.value, 10) || 0);
+      if (txt && !v) { t.value = S.config[k]; toast('Este dato no puede quedar vacío'); return; }
+      await api.guardarConfig({ [k]: v }); S.config[k] = v; if (!txt) t.value = v; if (k === 'salon') { SALON = v; const b = $('.brand'); if (b) b.firstChild.textContent = v; } toast('Guardado'); return;
+    }
+    if (t.dataset.nivel) {
+      const n = S.niveles.find(x => x.id === t.dataset.nivel), k = t.dataset.k; let v = t.value;
+      if (k === 'nombre') { v = v.trim(); if (!v) { t.value = n.nombre; return; } }
+      else if (k === 'desde') v = Math.max(1, parseInt(v, 10) || 1);
+      else if (k === 'mult') v = Math.max(1, parseFloat(v) || 1);
+      await api.guardarNivel({ id: n.id, [k]: v }); n[k] = v; toast('Guardado'); return;
+    }
+    if (t.id === 'f-import' && t.files[0]) {
+      const txt = await t.files[0].text();
+      try { const d = JSON.parse(txt); if (!d || !Array.isArray(d.clientes) || !d.config) throw 0; d.canjes = d.canjes || []; D = d; DB.save(D); await recargar(); ui.cid = null; regReset(); render(); toast('Copia restaurada'); } catch (x) { toast('Ese archivo no es una copia válida'); }
+    }
+  } catch (err) { toast(errorAmigable(err)); }
+});
+
+/* ── arranque ── */
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+if (MODE === 'demo') initDemo();
+route();
+</script></body></html>
