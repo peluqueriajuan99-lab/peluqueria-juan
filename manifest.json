@@ -1,0 +1,20 @@
+{
+  "name": "Studio Bakan · Puntos",
+  "short_name": "Studio Bakan",
+  "description": "Tu tarjeta de puntos: mirá tus puntos, tus premios y canjealos desde el celular.",
+  "lang": "es-AR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#101215",
+  "theme_color": "#101215",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Panel del equipo", "short_name": "Panel", "url": "./#panel", "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }] }
+  ]
+}
